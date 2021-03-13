@@ -1,0 +1,312 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  review api
+    
+Globals:
+    Function:
+        Timeout: 3
+    Api:
+      # enable CORS; to make more specific, change the origin wildcard
+      # to a particular domain name, e.g. "'www.example.com'"
+      Cors:
+        AllowMethods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+
+
+Resources:
+    ReviewGatewayApi:
+        Type: AWS::Serverless::Api
+        Properties:
+            StageName: Prod
+            Auth:
+              DefaultAuthorizer: LambdaTokenAuthorizer
+              Authorizers:
+                LambdaTokenAuthorizer:
+                  FunctionArn: !GetAtt AuthFunction.Arn
+                  # NOTE: Additional options:
+                  # FunctionInvokeRole: !Ref MyRole
+                  # Identity:
+                    # Header: Auth
+                    # ValidationExpression: Bearer.*
+                    # ReauthorizeEvery: 30 # seconds
+            DefinitionBody:
+
+                swagger: '2.0'
+                info:
+                  description: Review App for managing user reviews
+                  version: 1.0.0
+                  title: ReviewAPI
+                basePath: "/Prod"
+                tags:
+                  - name: review
+                    description: API for managing reviews
+                    externalDocs:
+                      description: Find out more
+                      url: 'https://reviewapi.net'
+                schemes:
+                  - https
+                paths:
+                  '/review':
+                     post:
+                      tags:
+                        - "review"
+                      summary: "Add a new review"
+                      operationId: addReview
+                      consumes:
+                        - "application/json"
+                      produces:
+                        - "application/json"
+                      parameters:
+                        - in: "body"
+                          name: "body"
+                          description: "create new review"
+                          required: true
+                          schema:
+                            $ref: "#/definitions/Review"
+                      responses:
+                        '400':
+                          description: "Invalid input"
+                        '200':
+                          description: "review added"
+                          schema:
+                            $ref: "#/definitions/Review"
+                      x-amazon-apigateway-integration:
+                        uri:
+                            Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateReviewFunction.Arn}/invocations"
+                        passthroughBehavior: "when_no_match"
+                        httpMethod: "POST"
+                        type: "aws_proxy"
+                     get:
+                      tags:
+                        - "review"
+                      summary: "get all reviews"
+                      operationId: getAllReviews
+                      consumes:
+                        - "application/json"
+                      produces:
+                        - "application/json"
+                      responses:
+                        '200':
+                          description: "ok"
+                          schema:
+                              type: 'array'
+                              items:
+                                $ref: '#/definitions/Review'
+                      x-amazon-apigateway-integration:
+                        uri:
+                            Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetAllReviewsFunction.Arn}/invocations"
+                        passthroughBehavior: "when_no_match"
+                        httpMethod: "POST"
+                        type: "aws_proxy"
+                  '/review/{review_id}':
+                    get:
+                      tags:
+                        - review
+                      summary: Get review
+                      operationId: getReview
+                      produces:
+                        - application/json
+                      parameters:
+                        - name: review_id
+                          in: path
+                          description: ID of review from db
+                          required: true
+                          type: string
+                      responses:
+                        '200':
+                          description: successful operation
+                          schema:
+                            $ref: '#/definitions/Review'
+                        '400':
+                          description: Bad id
+                        '404':
+                          description: Review not found
+                      x-amazon-apigateway-integration:
+                        uri:
+                            Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetReviewByIdFunction.Arn}/invocations"
+                        passthroughBehavior: "when_no_match"
+                        httpMethod: "POST"
+                        type: "aws_proxy"
+                    put:
+                      tags:
+                        - "review"
+                      summary: "Update an existing review"
+                      operationId: updateReview
+                      consumes:
+                        - "application/json"
+                      produces:
+                        - "application/json"
+                      parameters:
+                        - name: review_id
+                          in: path
+                          description: ID of review that needs to be found
+                          required: true
+                          type: string
+                        - in: "body"
+                          name: "body"
+                          description: "review data"
+                          required: true
+                          schema:
+                            $ref: "#/definitions/Review"
+                      responses:
+                        '400':
+                          description: Invalid input
+                        '200':
+                          description: successful operation
+                      x-amazon-apigateway-integration:
+                        uri:
+                            Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateReviewFunction.Arn}/invocations"
+                        passthroughBehavior: "when_no_match"
+                        httpMethod: "POST"
+                        type: "aws_proxy"
+                    delete:
+                      tags:
+                        - review
+                      summary: Delete the review by id
+                      operationId: deleteReview
+                      produces:
+                        - application/json
+                      parameters:
+                        - name: review_id
+                          in: path
+                          description: ID of the review that needs to be deleted
+                          required: true
+                          type: string
+                      responses:
+                        '200':
+                          description: successful operation
+                        '404':
+                          description: Review not found
+                      x-amazon-apigateway-integration:
+                        uri:
+                            Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteReviewByIdFunction.Arn}/invocations"
+                        passthroughBehavior: "when_no_match"
+                        httpMethod: "POST"
+                        type: "aws_proxy"
+                definitions:
+                  Review:
+                    type: object
+                    properties:
+                        _id:
+                            type: string
+                        test:
+                            type: string
+                    
+
+
+
+
+    GetAllReviewsFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: functions/
+            Handler: ReviewAPI.get
+            Runtime: nodejs14.x
+            Environment:
+                Variables:
+                    PARAM1: VALUE
+            Events:
+                ReviewAPI:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref ReviewGatewayApi
+                        Path: /review
+                        Method: get
+    GetReviewByIdFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: functions/
+            Handler: ReviewAPI.get
+            Runtime: nodejs14.x
+            Environment:
+                Variables:
+                    PARAM1: VALUE
+            Events:
+                ReviewAPI:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref ReviewGatewayApi
+                        Path: /review/{review_id}
+                        Method: get
+                        Auth:
+                          Authorizer: NONE
+    CreateReviewFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: functions/
+            Handler: ReviewAPI.add
+            Runtime: nodejs14.x
+            Environment:
+                Variables:
+                    PARAM1: VALUE
+            Events:
+                ReviewAPI:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref ReviewGatewayApi
+                        Path: /review
+                        Method: post
+    UpdateReviewFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: functions/
+            Handler: ReviewAPI.update
+            Runtime: nodejs14.x
+            Environment:
+                Variables:
+                    PARAM1: VALUE
+            Events:
+                ReviewAPI:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref ReviewGatewayApi
+                        Path: /review/{review_id}
+                        Method: put
+    DeleteReviewByIdFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: functions/
+            Handler: ReviewAPI.del
+            Runtime: nodejs14.x
+            Environment:
+                Variables:
+                    PARAM1: VALUE
+            Events:
+                ReviewAPI:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref ReviewGatewayApi
+                        Path: /review/{review_id}
+                        Method: delete
+    AuthFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: functions/
+            Handler: Authorizer.handler
+            Runtime: nodejs14.x
+            Environment:
+                Variables:
+                    PARAM1: VALUE
+Outputs:
+
+    ReviewAPIURL:
+      Description: "API Gateway endpoint URL for Prod stage for ReviewAPI function"
+      Value: !Sub "https://${ReviewGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/review/"
+    GetAllReviewsFunction:
+      Description: "Get Review Lambda Function ARN"
+      Value: !GetAtt GetAllReviewsFunction.Arn
+    GetReviewByIdFunction:
+      Description: "Get Review By Id Lambda Function ARN"
+      Value: !GetAtt GetReviewByIdFunction.Arn
+    UpdateReviewFunction:
+      Description: "Put Review Lambda Function ARN"
+      Value: !GetAtt UpdateReviewFunction.Arn
+    CreateReviewFunction:
+      Description: "Post Review Lambda Function ARN"
+      Value: !GetAtt CreateReviewFunction.Arn
+    DeleteReviewByIdFunction:
+      Description: "Delete Review Lambda Function ARN"
+      Value: !GetAtt DeleteReviewByIdFunction.Arn
+

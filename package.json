@@ -1,0 +1,39 @@
+{
+  "name": "review-api",
+  "version": "1.0.0",
+  "description": "Review API serverless",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "rimraf": "^2.6.3",
+    "typescript": "^3.2.2"
+  },
+  "config": {
+    "aws": {
+      "bucket": "review-api-lambda-pkg",
+      "region": "eu-central-1"
+    }
+  },
+  "scripts": {
+    "build": "npm run clean && npm run build-ts && npm run build-sam",
+    "build-ts": "tsc --build tsconfig.json",
+    "build-sam": "sam build --region $npm_package_config_aws_region",
+    "build-pkg": "sam package --output-template-file packaged.yaml --s3-bucket $npm_package_config_aws_bucket",
+    "deploy": "sam deploy --template-file packaged.yaml --stack-name review-api --capabilities CAPABILITY_IAM --region $npm_package_config_aws_region",
+    "deploy-full": "npm run build && npm run build-pkg && npm run deploy",
+    "clean": "rimraf dist/*",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "sam local start-api --region $npm_package_config_aws_region",
+    "start-dbg": "sam local start-api --debug-port 5858 --region $npm_package_config_aws_region"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vpavel04/review-api.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vpavel04/review-api/issues"
+  },
+  "homepage": "https://github.com/vpavel04/review-api#readme"
+}
