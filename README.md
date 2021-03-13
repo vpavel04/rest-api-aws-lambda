@@ -1,14 +1,14 @@
-# rest-api-lamda-aws
+# rest-api-aws-lambda
 
-This is a sample REST API using AWS lambda functions, written in Typescript
+This is a sample REST API using AWS lambda, written in Typescript
 
 ## Requirements
 
 * AWS SAM CLI 
-* [NodeJS 14.x installed](https://nodejs.org/en/download/)
-* [Docker installed](https://www.docker.com/community-edition)
+* [NodeJS 14.x](https://nodejs.org/en/download/)
+* [Docker](https://www.docker.com/community-edition)
 
-### Building the project
+### Build
  
 ```bash
 npm install
@@ -28,4 +28,8 @@ npm run start
 
 Open `http://localhost:3000/review`
 
-## Testing
+### Deploy
+
+```bash
+npm run deploy-full
+```
