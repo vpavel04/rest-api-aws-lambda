@@ -1,6 +1,6 @@
 # rest-api-aws-lambda
 
-This is a sample REST API using AWS lambda, written in Typescript
+This is a sample REST API with AWS lambda, written in Typescript
 
 ## Requirements
 
